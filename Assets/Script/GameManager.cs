@@ -6,8 +6,6 @@ public class GameManager : MonoBehaviour
 {
     public GameObject cubePrefab;
 
-    public static int totalCubesCreated = 0; // Số Cube đã tạo
-    public static int currentCubesActive = 0; // Số Cube còn lại trong cảnh
     // Hàm Start được gọi khi bắt đầu game
     void Start()
     {
