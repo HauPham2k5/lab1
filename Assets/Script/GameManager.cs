@@ -6,7 +6,11 @@ public class GameManager : MonoBehaviour
 {
     public GameObject cubePrefab;
 
-    // Hàm Start được gọi khi bắt đầu game
+    public float xMin = -10f, xMax = 10f;
+    public float yMin = 0f, yMax = 5f;
+    public float zMin = -10f, zMax = 10f;
+
+    // Start được gọi khi khởi tạo
     void Start()
     {
         StartCoroutine(TaoCube());
@@ -14,63 +18,70 @@ public class GameManager : MonoBehaviour
 
     IEnumerator TaoCube()
     {
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 10; i++)
         {
-            // Đợi 3 giây trước khi tạo cube
-            yield return new WaitForSeconds(3);
-            float x = Random.Range(-5, 5);
-            Vector3 pos = new Vector3(x, x, x);
-            GameObject cubeClone = Instantiate(cubePrefab, pos, Quaternion.identity);
-            StartCoroutine(MoveCube(cubeClone));
+            yield return new WaitForSeconds(1);
+
+            float randomX = Random.Range(xMin, xMax);
+            float randomY = Random.Range(yMin, yMax);
+            float randomZ = Random.Range(zMin, zMax);
+
+            Vector3 randomPosition = new Vector3(randomX, randomY, randomZ);
+
+            GameObject CubeClone = Instantiate(cubePrefab, randomPosition, Quaternion.identity);
+            StartCoroutine(MoveCube(CubeClone));
+            StartCoroutine(Facube(CubeClone)); // Gọi để xử lý sự kiện khi nhấn phím Space
         }
     }
 
-    IEnumerator MoveCube(GameObject cubeClone)
+    IEnumerator MoveCube(GameObject CubeClone)
     {
-        float elapsedTime = 0f;
-        float duration = 3f;
+        float elapsedtime = 0f;
+        float moveDuration = 3f;  // Đảm bảo cube mất 3 giây để di chuyển đến gốc
+        Vector3 startPosition = CubeClone.transform.position;
 
-        // Lấy Renderer và Material của cube
-        Renderer renderer = cubeClone.GetComponent<Renderer>();
-        Material material = renderer.material;
-
-        // Cấu hình vật liệu để hỗ trợ chế độ trong suốt
-        material.SetFloat("_Mode", 3); // Chế độ Transparent
-        material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-        material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-        material.SetInt("_ZWrite", 0);
-        material.DisableKeyword("_ALPHATEST_ON");
-        material.EnableKeyword("_ALPHABLEND_ON");
-        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-        material.renderQueue = 3000;
-
-        // Lấy màu ban đầu và giá trị alpha
-        Color color = material.color;
-        float startAlpha = color.a;
-
-        while (elapsedTime < duration)
+        while (elapsedtime < moveDuration)
         {
-            // Di chuyển cube về vị trí (0,0,0)
-            cubeClone.transform.position = Vector3.Lerp(cubeClone.transform.position, Vector3.zero, elapsedTime / duration);
+            CubeClone.transform.position = Vector3.Lerp(startPosition, Vector3.zero, elapsedtime / moveDuration);
+            elapsedtime += Time.deltaTime;
+            yield return null;
+        }
 
-            // Làm mờ dần bằng cách giảm giá trị alpha
-            float alpha = Mathf.Lerp(startAlpha, 0f, elapsedTime / duration);
-            material.color = new Color(color.r, color.g, color.b, alpha);
+        CubeClone.transform.position = Vector3.zero;  // Đảm bảo cube kết thúc đúng tại gốc
+    }
 
+    IEnumerator Facube(GameObject CubeClone)
+    {
+        // Chờ đợi cho đến khi nhấn phím Space
+        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+
+        // Lấy Renderer của cube để thay đổi độ mờ
+        Renderer cubeRenderer = CubeClone.GetComponent<Renderer>();
+        Color originalColor = cubeRenderer.material.color; // Lưu lại màu ban đầu của cube
+
+        // Đảm bảo vật liệu sử dụng chế độ Transparent
+        cubeRenderer.material.SetFloat("_Mode", 3); // Chế độ Transparent
+        cubeRenderer.material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        cubeRenderer.material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        cubeRenderer.material.SetInt("_ZWrite", 0);
+        cubeRenderer.material.DisableKeyword("_ALPHATEST_ON");
+        cubeRenderer.material.EnableKeyword("_ALPHABLEND_ON");
+        cubeRenderer.material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        cubeRenderer.material.renderQueue = 3000;
+
+        float fadeDuration = 2f; // Thời gian làm mờ dần
+        float elapsedTime = 0f;
+
+        // Làm mờ dần cube trong khoảng thời gian fadeDuration
+        while (elapsedTime < fadeDuration)
+        {
+            float alpha = Mathf.Lerp(1f, 0f, elapsedTime / fadeDuration); // Lerp từ alpha = 1 đến 0
+            cubeRenderer.material.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
             elapsedTime += Time.deltaTime;
             yield return null;
         }
 
-        // Đảm bảo cube hoàn toàn mờ sau khi kết thúc
-        material.color = new Color(color.r, color.g, color.b, 0f);
-
-        // Xóa cube khi đã mờ hoàn toàn
-        Destroy(cubeClone);
-    }
-
-    // Update được gọi mỗi frame (không sử dụng trong trường hợp này)
-    void Update()
-    {
-
+        // Đảm bảo rằng alpha là 0 khi kết thúc
+        cubeRenderer.material.color = new Color(originalColor.r, originalColor.g, originalColor.b, 0f);
     }
 }
